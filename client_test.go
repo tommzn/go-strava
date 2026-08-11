@@ -1,10 +1,10 @@
 package strava
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -187,7 +187,7 @@ func clientForTest() *Client {
 }
 
 func serveFile(w http.ResponseWriter, r *http.Request, filename string) {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -198,7 +198,7 @@ func serveFile(w http.ResponseWriter, r *http.Request, filename string) {
 }
 
 func serveError(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadFile("fixtures/fault.json")
+	content, err := os.ReadFile("fixtures/fault.json")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
