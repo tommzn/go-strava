@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -102,7 +102,7 @@ func (client *Client) sendRequest(req *http.Request) ([]byte, error) {
 	}
 
 	defer res.Body.Close()
-	return ioutil.ReadAll(res.Body)
+	return io.ReadAll(res.Body)
 }
 
 // AddToken ewtrieves an OAuth2 token from assigned token source and
@@ -138,7 +138,7 @@ func (client *Client) getAthleteId() (*int64, error) {
 func faultReponseAsError(res *http.Response) error {
 
 	defer res.Body.Close()
-	responseBody, _ := ioutil.ReadAll(res.Body)
+	responseBody, _ := io.ReadAll(res.Body)
 
 	fault := &Fault{}
 	json.Unmarshal(responseBody, fault)
