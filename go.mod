@@ -1,7 +1,7 @@
 // Golang Strava API Client.
 module github.com/tommzn/go-strava
 
-go 1.25.0
+go 1.25
 
 require (
 	github.com/stretchr/testify v1.12.1
