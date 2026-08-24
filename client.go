@@ -7,12 +7,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"golang.org/x/oauth2"
 )
 
-// New returna an api client with BASE_URL as default.
+// New returns an api client with BASE_URL as default.
 func New(tokenSource oauth2.TokenSource) *Client {
 	return &Client{
 		baseUrl:     BASE_URL,
@@ -21,36 +22,46 @@ func New(tokenSource oauth2.TokenSource) *Client {
 	}
 }
 
-// WithBaseUrl set given url as base for all api calls.
+// WithBaseUrl sets the given url as the base for all api calls.
 func (client *Client) WithBaseUrl(baseUrl string) {
 	client.baseUrl = baseUrl
 }
 
-// WithAthleteId assigns given athlete id. This id will be used for all further requests.
+// WithAthleteId assigns the given athlete id. This id will be used for all further requests.
 func (client *Client) WithAthleteId(athleteId int64) {
 	client.athleteId = &athleteId
 }
 
-// AuthorizedAthlete try to fetch current athelete, defined by used auth tokens, from Strava.
+// AuthorizedAthlete tries to fetch the current athlete, defined by the used
+// auth tokens, from Strava.
 func (client *Client) AuthorizedAthlete() (*DetailedAthlete, error) {
 
-	req, _ := http.NewRequest("GET", client.apiEndpoint("/athlete"), nil)
+	req, err := http.NewRequest(http.MethodGet, client.apiEndpoint("/athlete"), nil)
+	if err != nil {
+		return nil, err
+	}
 	responseBody, err := client.sendRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
 	detailedAthlete := &DetailedAthlete{}
-	jsonErr := json.Unmarshal(responseBody, detailedAthlete)
-	return detailedAthlete, jsonErr
+	if err := json.Unmarshal(responseBody, detailedAthlete); err != nil {
+		return nil, err
+	}
+	return detailedAthlete, nil
 }
 
-// AthleteActivities lists available activities for an athlete.
-// You can use timeFilter to retrice time range activities should be requested for. Pagination param can be
-// used if retrieve activities step by step if there're a lot of them.
+// AthleteActivities lists available activities for an athlete. You can use
+// timeFilter to restrict the time range activities should be requested for.
+// Pagination can be used to retrieve activities step by step if there are a
+// lot of them.
 func (client *Client) AthleteActivities(timeFilter *TimeFilter, pagination *Pagination) (*[]SummaryActivity, error) {
 
-	req, _ := http.NewRequest("GET", client.apiEndpoint("/athlete/activities"), nil)
+	req, err := http.NewRequest(http.MethodGet, client.apiEndpoint("/athlete/activities"), nil)
+	if err != nil {
+		return nil, err
+	}
 	query := req.URL.Query()
 	appendTimeFilter(&query, timeFilter)
 	appendPagination(&query, pagination)
@@ -62,11 +73,14 @@ func (client *Client) AthleteActivities(timeFilter *TimeFilter, pagination *Pagi
 	}
 
 	summaryActivity := &[]SummaryActivity{}
-	jsonErr := json.Unmarshal(responseBody, summaryActivity)
-	return summaryActivity, jsonErr
+	if err := json.Unmarshal(responseBody, summaryActivity); err != nil {
+		return nil, err
+	}
+	return summaryActivity, nil
 }
 
-// AthleteStats returns summarited athlete stats, related to current year or in total.
+// AthleteStats returns summarized athlete stats, related to the current year
+// or in total.
 func (client *Client) AthleteStats() (*ActivityStats, error) {
 
 	athleteId, err := client.getAthleteId()
@@ -74,39 +88,44 @@ func (client *Client) AthleteStats() (*ActivityStats, error) {
 		return nil, err
 	}
 
-	req, _ := http.NewRequest("GET", client.apiEndpoint("/athletes/%d/stats", *athleteId), nil)
+	req, err := http.NewRequest(http.MethodGet, client.apiEndpoint("/athletes/%d/stats", *athleteId), nil)
+	if err != nil {
+		return nil, err
+	}
 	responseBody, err := client.sendRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
 	activityStats := &ActivityStats{}
-	jsonErr := json.Unmarshal(cleanEmptyStrings(responseBody), activityStats)
-	return activityStats, jsonErr
+	if err := json.Unmarshal(cleanEmptyStrings(responseBody), activityStats); err != nil {
+		return nil, err
+	}
+	return activityStats, nil
 }
 
-// SendRequest will add auth token and performs given request to Strava's API.
+// sendRequest adds the auth token and performs the given request against
+// Strava's API.
 func (client *Client) sendRequest(req *http.Request) ([]byte, error) {
 
 	if err := client.addToken(req); err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	res, err := client.httpClient.Do(req)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode > 399 {
-		return []byte{}, faultReponseAsError(res)
+		return nil, faultResponseAsError(res)
 	}
-
-	defer res.Body.Close()
 	return io.ReadAll(res.Body)
 }
 
-// AddToken ewtrieves an OAuth2 token from assigned token source and
-// add it as Authorization header to given request.
+// addToken retrieves an OAuth2 token from the assigned token source and adds
+// it as an Authorization header to the given request.
 func (client *Client) addToken(req *http.Request) error {
 	token, err := client.tokenSource.Token()
 	if err != nil {
@@ -116,13 +135,14 @@ func (client *Client) addToken(req *http.Request) error {
 	return nil
 }
 
-// ApiEndpoint add base url prefix to given api endpoint.
+// apiEndpoint prepends the base url to the given api endpoint path.
 func (client *Client) apiEndpoint(path string, args ...interface{}) string {
 	return fmt.Sprintf(client.baseUrl+path, args...)
 }
 
-// GetAthleteId will return local athlete id, assigned by WithAthleteId method, or
-// try to request it directly from Strave using AuthorizedAthlete method.
+// getAthleteId returns the local athlete id, assigned by the WithAthleteId
+// method, or requests it directly from Strava using the AuthorizedAthlete
+// method.
 func (client *Client) getAthleteId() (*int64, error) {
 	if client.athleteId == nil {
 		detailedAthlete, err := client.AuthorizedAthlete()
@@ -134,48 +154,52 @@ func (client *Client) getAthleteId() (*int64, error) {
 	return client.athleteId, nil
 }
 
-// FaultReponseAsError converts API response body of type Fault into an error.
-func faultReponseAsError(res *http.Response) error {
+// faultResponseAsError converts an API response body of type Fault into an error.
+func faultResponseAsError(res *http.Response) error {
 
-	defer res.Body.Close()
 	responseBody, _ := io.ReadAll(res.Body)
 
 	fault := &Fault{}
-	json.Unmarshal(responseBody, fault)
-	errMsg := fmt.Sprintf("%d %s", res.StatusCode, fault.Message)
+	_ = json.Unmarshal(responseBody, fault)
+
+	msg := fmt.Sprintf("%d %s", res.StatusCode, fault.Message)
 	if len(fault.Errors) > 0 {
-		errMsg = fmt.Sprintf("%s: %s %s %s", errMsg, fault.Errors[0].Resource, fault.Errors[0].Field, fault.Errors[0].Code)
+		first := fault.Errors[0]
+		msg = fmt.Sprintf("%s: %s %s %s", msg, first.Resource, first.Field, first.Code)
 	}
-	return errors.New(errMsg)
+	return errors.New(msg)
 }
 
-// AppendTimeFilter appends given time filter to passed query.
-// Nil values for Before and After will be skipped.
+// appendTimeFilter appends the given time filter to the passed query. Nil
+// values for Before and After are skipped.
 func appendTimeFilter(query *url.Values, timeFilter *TimeFilter) {
-	if timeFilter != nil {
-		if timeFilter.Before != nil {
-			query.Add("before", fmt.Sprintf("%d", timeFilter.Before.Unix()))
-		}
-		if timeFilter.After != nil {
-			query.Add("after", fmt.Sprintf("%d", timeFilter.After.Unix()))
-		}
+	if timeFilter == nil {
+		return
+	}
+	if timeFilter.Before != nil {
+		query.Add("before", strconv.FormatInt(timeFilter.Before.Unix(), 10))
+	}
+	if timeFilter.After != nil {
+		query.Add("after", strconv.FormatInt(timeFilter.After.Unix(), 10))
 	}
 }
 
-// AppendPagination will add given page or per page values to passed query.
-// Nil values for page and per page will be skipped.
+// appendPagination adds the given page or per_page values to the passed query.
+// Nil values for page and per_page are skipped.
 func appendPagination(query *url.Values, pagination *Pagination) {
-	if pagination != nil {
-		if pagination.Page != nil {
-			query.Add("page", fmt.Sprintf("%d", *pagination.Page))
-		}
-		if pagination.PerPage != nil {
-			query.Add("per_page", fmt.Sprintf("%d", *pagination.PerPage))
-		}
+	if pagination == nil {
+		return
+	}
+	if pagination.Page != nil {
+		query.Add("page", strconv.Itoa(*pagination.Page))
+	}
+	if pagination.PerPage != nil {
+		query.Add("per_page", strconv.Itoa(*pagination.PerPage))
 	}
 }
 
-// CleanEmptyStrings replaces all occurrences of "" in given content with an empty Json object {}.
+// cleanEmptyStrings replaces all occurrences of "" in the given content with
+// an empty JSON object {}.
 func cleanEmptyStrings(content []byte) []byte {
 	return []byte(strings.ReplaceAll(string(content), "\"\"", "{}"))
 }
