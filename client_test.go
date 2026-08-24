@@ -157,6 +157,55 @@ func (suite *ClientTestSuite) TestAppendPagination() {
 	suite.Equal("page=4&per_page=25", query.Encode())
 }
 
+func (suite *ClientTestSuite) TestAuthorizedAthleteInvalidJSON() {
+
+	client := clientForTest()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+	client.WithBaseUrl(ts.URL)
+
+	got, err := client.AuthorizedAthlete()
+	suite.Error(err)
+	suite.Nil(got)
+}
+
+func (suite *ClientTestSuite) TestAthleteActivitiesInvalidJSON() {
+
+	client := clientForTest()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+	client.WithBaseUrl(ts.URL)
+
+	got, err := client.AthleteActivities(nil, nil)
+	suite.Error(err)
+	suite.Nil(got)
+}
+
+func (suite *ClientTestSuite) TestAthleteStatsInvalidJSON() {
+
+	client := clientForTest()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer ts.Close()
+	client.WithBaseUrl(ts.URL)
+	client.WithAthleteId(42)
+
+	got, err := client.AthleteStats()
+	suite.Error(err)
+	suite.Nil(got)
+}
+
 func (suite *ClientTestSuite) TestTokenSourceError() {
 
 	client := clientForTest()
@@ -192,9 +241,9 @@ func serveFile(w http.ResponseWriter, r *http.Request, filename string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(content)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(content)
 }
 
 func serveError(w http.ResponseWriter, r *http.Request) {
@@ -203,7 +252,7 @@ func serveError(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(content)
+	w.WriteHeader(http.StatusInternalServerError)
+	_, _ = w.Write(content)
 }
