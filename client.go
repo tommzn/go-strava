@@ -2,7 +2,6 @@ package strava
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -162,12 +161,11 @@ func faultResponseAsError(res *http.Response) error {
 	fault := &Fault{}
 	_ = json.Unmarshal(responseBody, fault)
 
-	msg := fmt.Sprintf("%d %s", res.StatusCode, fault.Message)
 	if len(fault.Errors) > 0 {
 		first := fault.Errors[0]
-		msg = fmt.Sprintf("%s: %s %s %s", msg, first.Resource, first.Field, first.Code)
+		return fmt.Errorf("%d %s: %s %s %s", res.StatusCode, fault.Message, first.Resource, first.Field, first.Code)
 	}
-	return errors.New(msg)
+	return fmt.Errorf("%d %s", res.StatusCode, fault.Message)
 }
 
 // appendTimeFilter appends the given time filter to the passed query. Nil
