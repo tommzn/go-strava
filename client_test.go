@@ -56,7 +56,7 @@ func (suite *ClientTestSuite) TestAuthorizedAthlete() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveFile(w, r, "fixtures/authorizedAthlete.json")
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	detailedAthlete, err := client.AuthorizedAthlete()
@@ -71,7 +71,7 @@ func (suite *ClientTestSuite) TestAuthorizedAthleteWithError() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveError(w, r)
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	detailedAthlete, err := client.AuthorizedAthlete()
@@ -85,7 +85,7 @@ func (suite *ClientTestSuite) TestAthleteActivities() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveFile(w, r, "fixtures/athleteactivities.json")
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	athleteActivities, err := client.AthleteActivities(nil, nil)
@@ -100,7 +100,7 @@ func (suite *ClientTestSuite) TestAthleteActivitiesWithError() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveError(w, r)
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	athleteActivities, err := client.AthleteActivities(nil, nil)
@@ -114,7 +114,7 @@ func (suite *ClientTestSuite) TestAthleteStats() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveFile(w, r, "fixtures/athletestats.json")
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	activityStats, err := client.AthleteStats()
@@ -129,7 +129,7 @@ func (suite *ClientTestSuite) TestAthleteStatsWithError() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveError(w, r)
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 	client.WithAthleteId(1234567890)
 
@@ -165,7 +165,7 @@ func (suite *ClientTestSuite) TestAuthorizedAthleteInvalidJSON() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("not-json"))
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	got, err := client.AuthorizedAthlete()
@@ -181,7 +181,7 @@ func (suite *ClientTestSuite) TestAthleteActivitiesInvalidJSON() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("not-json"))
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 
 	got, err := client.AthleteActivities(nil, nil)
@@ -197,7 +197,7 @@ func (suite *ClientTestSuite) TestAthleteStatsInvalidJSON() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("not-json"))
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 	client.WithAthleteId(42)
 
@@ -212,7 +212,7 @@ func (suite *ClientTestSuite) TestTokenSourceError() {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serveFile(w, r, "fixtures/athletestats.json")
 	}))
-	defer ts.Close()
+	suite.T().Cleanup(ts.Close)
 	client.WithBaseUrl(ts.URL)
 	client.tokenSource = newTokenSourceMock(true)
 
